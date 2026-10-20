@@ -1,0 +1,22 @@
+
+> temp-app@0.1.0 dev
+> next dev
+
+▲ Next.js 16.4.2 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+✓ Ready in 558ms
+✓ Running next.config.ts took 45ms
+- Cache Components enabled
+- Partial Prefetching enabled
+
+○ Compiling / ...
+ HEAD / 200 in 536ms (next.js: 275ms, application-code: 261ms)
+ GET / 200 in 102ms (next.js: 5ms, application-code: 97ms)
+ GET /api/works?sortBy=updatedAt 200 in 323ms (next.js: 224ms, application-code: 99ms)
+ GET /api/works?sortBy=updatedAt 200 in 10ms (next.js: 1.9ms, application-code: 8ms)
+ GET /api/works/work-1 200 in 1349ms (next.js: 1335ms, application-code: 15ms)
+ GET /api/works/work-1 200 in 29ms (next.js: 16ms, application-code: 13ms)
+ POST /api/interactions 200 in 86ms (next.js: 74ms, application-code: 12ms)
+ GET /api/works/work-1 200 in 26ms (next.js: 18ms, application-code: 8ms)
+ GET /api/works/work-1 200 in 9ms (next.js: 3ms, application-code: 6ms)
