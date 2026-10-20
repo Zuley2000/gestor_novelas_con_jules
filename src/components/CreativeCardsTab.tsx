@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Work, Chapter, CreativeCard } from '@/lib/types';
 import {
-  Plus, Trash2, Edit3, Save, RefreshCw, FileText, Sparkles, BookOpen, UserCheck, Tag, Link2
+  Plus, Trash2, Edit3, Save, RefreshCw, FileText, Sparkles, BookOpen, UserCheck, Tag, Link2, Upload
 } from 'lucide-react';
 
 interface CreativeCardsTabProps {
@@ -27,6 +27,8 @@ export function CreativeCardsTab({ workId, cards, onRefresh }: CreativeCardsTabP
   const [editTags, setEditTags] = useState('');
   const [editFields, setEditFields] = useState<{ id: string; label: string; value: string }[]>([]);
   const [editConnections, setEditConnections] = useState<{ targetCardId: string; targetCardName: string; relation: string }[]>([]);
+
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     if (cards.length > 0 && !selectedCard) {
@@ -54,6 +56,31 @@ export function CreativeCardsTab({ workId, cards, onRefresh }: CreativeCardsTabP
                           c.tags.some(t => t.toLowerCase().includes(search.toLowerCase()));
     return matchesType && matchesSearch;
   });
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setEditAvatarUrl(data.url);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const handleCreateCard = async () => {
     const res = await fetch('/api/cards', {
@@ -394,14 +421,21 @@ export function CreativeCardsTab({ workId, cards, onRefresh }: CreativeCardsTabP
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">Avatar / Image URL</label>
-                    <input
-                      type="text"
-                      value={editAvatarUrl}
-                      onChange={(e) => setEditAvatarUrl(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100"
-                      placeholder="https://images.unsplash.com/..."
-                    />
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Card Image File or URL</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={editAvatarUrl}
+                        onChange={(e) => setEditAvatarUrl(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100"
+                        placeholder="https://..."
+                      />
+                      <label className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer shrink-0 flex items-center gap-1">
+                        <Upload className="w-3.5 h-3.5" />
+                        {uploadingAvatar ? '...' : 'Upload'}
+                        <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
+                      </label>
+                    </div>
                   </div>
                 </div>
 

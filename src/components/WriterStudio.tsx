@@ -5,9 +5,10 @@ import { Work, Chapter, CreativeCard, PlanningCard } from '@/lib/types';
 import { CreativeCardsTab } from '@/components/CreativeCardsTab';
 import { PlanningTab } from '@/components/PlanningTab';
 import { ExportModal } from '@/components/ExportModal';
+import { AiAssistantDrawer } from '@/components/AiAssistantDrawer';
 import {
   FileText, Sparkles, LayoutGrid, Download, Plus, Save, Trash2, ArrowLeft,
-  Settings, Target, RefreshCw, BookOpen, Clock, Tag
+  Settings, Target, RefreshCw, BookOpen, Clock, Tag, Upload, Bot
 } from 'lucide-react';
 
 interface WriterStudioProps {
@@ -31,14 +32,14 @@ export function WriterStudio({ workId, onBack }: WriterStudioProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
-  // Focus mode
-  const [isFocusMode, setIsFocusMode] = useState(false);
-
-  // Quick Reference Sidebar in Editor
-  const [showRefSidebar, setShowRefSidebar] = useState(true);
+  // Sidebar toggle
+  const [showAiDrawer, setShowAiDrawer] = useState(true);
 
   // Export Modal State
   const [isExportOpen, setIsExportOpen] = useState(false);
+
+  // Image Uploading status
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   // Target word count goal
   const [dailyGoal, setDailyGoal] = useState<number>(1000);
@@ -121,6 +122,39 @@ export function WriterStudio({ workId, onBack }: WriterStudioProps) {
       const newCh = await res.json();
       fetchWorkDetails();
       setSelectedChapter(newCh);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'cover') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingCover(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (target === 'cover' && work) {
+          const updatedWork = { ...work, coverUrl: data.url };
+          setWork(updatedWork);
+          await fetch(`/api/works/${workId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedWork),
+          });
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUploadingCover(false);
     }
   };
 
@@ -270,7 +304,7 @@ export function WriterStudio({ workId, onBack }: WriterStudioProps) {
             </div>
 
             {/* Main Writing Workspace */}
-            <div className={`flex flex-col bg-slate-900 border border-slate-800 rounded-2xl h-full overflow-hidden ${showRefSidebar ? 'md:col-span-6' : 'md:col-span-9'}`}>
+            <div className={`flex flex-col bg-slate-900 border border-slate-800 rounded-2xl h-full overflow-hidden ${showAiDrawer ? 'md:col-span-5' : 'md:col-span-9'}`}>
               {selectedChapter ? (
                 <div className="flex flex-col h-full p-6">
                   {/* Title & Controls */}
@@ -284,14 +318,15 @@ export function WriterStudio({ workId, onBack }: WriterStudioProps) {
                     />
                     <div className="flex items-center gap-2 shrink-0">
                       <button
-                        onClick={() => setShowRefSidebar(!showRefSidebar)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                          showRefSidebar
+                        onClick={() => setShowAiDrawer(!showAiDrawer)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition flex items-center gap-1.5 ${
+                          showAiDrawer
                             ? 'bg-indigo-950 text-indigo-300 border-indigo-800'
                             : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
                         }`}
                       >
-                        {showRefSidebar ? 'Hide Lore Sidebar' : 'Show Lore Sidebar'}
+                        <Bot className="w-3.5 h-3.5 text-indigo-400" />
+                        {showAiDrawer ? 'Hide AI Co-Pilot' : 'Show AI Co-Pilot'}
                       </button>
                     </div>
                   </div>
@@ -349,29 +384,13 @@ export function WriterStudio({ workId, onBack }: WriterStudioProps) {
               )}
             </div>
 
-            {/* Quick Reference Side Deck */}
-            {showRefSidebar && (
-              <div className="md:col-span-3 bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col h-full overflow-hidden">
-                <h3 className="font-semibold text-slate-200 text-sm mb-3 pb-2 border-b border-slate-800 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-indigo-400" /> Quick Reference Deck
-                </h3>
-
-                <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-                  {cards.map((card) => (
-                    <div key={card.id} className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 text-xs">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-slate-200">{card.name}</span>
-                        <span className="text-[10px] text-indigo-400 uppercase font-semibold">{card.type}</span>
-                      </div>
-                      <p className="text-slate-400 line-clamp-3 leading-relaxed">{card.summary}</p>
-                    </div>
-                  ))}
-                  {cards.length === 0 && (
-                    <p className="text-slate-500 text-xs text-center py-6">
-                      No cards created yet. Switch to "Lore & Cards" tab to build your deck!
-                    </p>
-                  )}
-                </div>
+            {/* AI Assistant Drawer Sidebar */}
+            {showAiDrawer && (
+              <div className="md:col-span-4 h-full overflow-y-auto">
+                <AiAssistantDrawer
+                  currentContent={editorContent}
+                  onApplySuggestion={(text) => setEditorContent((prev) => `${prev}\n\n${text}`)}
+                />
               </div>
             )}
           </div>
@@ -387,14 +406,43 @@ export function WriterStudio({ workId, onBack }: WriterStudioProps) {
           <PlanningTab workId={workId} planningCards={planningCards} chapters={chapters} onRefresh={fetchWorkDetails} />
         )}
 
-        {/* Settings & Tag Metadata Tab (AO3 Style Tagging) */}
+        {/* Settings & Tag Metadata Tab */}
         {activeTab === 'settings' && (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-3xl mx-auto space-y-6">
             <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3">
-              <Settings className="w-5 h-5 text-indigo-400" /> Novel Metadata & AO3-Style Tagging
+              <Settings className="w-5 h-5 text-indigo-400" /> Novel Metadata & Cover Art
             </h2>
 
             <div className="space-y-4">
+              {/* Cover Art Upload Section */}
+              <div className="p-4 bg-slate-950/60 border border-slate-800 rounded-xl space-y-3">
+                <label className="block text-xs font-semibold uppercase text-slate-400">Novel Cover Art</label>
+                <div className="flex items-center gap-4">
+                  {work.coverUrl ? (
+                    <img src={work.coverUrl} alt="Cover" className="w-20 h-28 object-cover rounded-lg border border-slate-700" />
+                  ) : (
+                    <div className="w-20 h-28 bg-slate-800 rounded-lg flex items-center justify-center text-xs text-slate-500">
+                      No Cover
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer transition">
+                      <Upload className="w-4 h-4" />
+                      {uploadingCover ? 'Uploading...' : 'Upload Image File'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, 'cover')}
+                        className="hidden"
+                      />
+                    </label>
+                    <p className="text-[11px] text-slate-400">
+                      Supports PNG, JPG, WEBP. Converted & stored locally in <code>public/uploads</code>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Work Title</label>
                 <input
@@ -442,38 +490,6 @@ export function WriterStudio({ workId, onBack }: WriterStudioProps) {
                     <option value="Not Rated">Not Rated</option>
                   </select>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Fandoms (comma separated)</label>
-                <input
-                  type="text"
-                  value={work.fandoms.join(', ')}
-                  onChange={(e) => setWork({ ...work, fandoms: e.target.value.split(',').map((s) => s.trim()) })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Relationships / Ships (comma separated)</label>
-                <input
-                  type="text"
-                  value={work.relationships.join(', ')}
-                  onChange={(e) => setWork({ ...work, relationships: e.target.value.split(',').map((s) => s.trim()) })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100"
-                  placeholder="e.g. Kaelen Vance/Lyra Mercer"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Freeform Additional Tags (comma separated)</label>
-                <input
-                  type="text"
-                  value={work.tags.join(', ')}
-                  onChange={(e) => setWork({ ...work, tags: e.target.value.split(',').map((s) => s.trim()) })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100"
-                  placeholder="e.g. Cyberpunk, Magic System, Slow Burn, Found Family"
-                />
               </div>
 
               <div className="pt-4 border-t border-slate-800 text-right">
