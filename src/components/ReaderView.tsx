@@ -38,6 +38,13 @@ export function ReaderView({ workId, onBack, onOpenStudio }: ReaderViewProps) {
   const [commentUsername, setCommentUsername] = useState('');
   const [commentList, setCommentList] = useState<Comment[]>([]);
 
+  // Mounting state to prevent hydration mismatch for dates
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const fetchWorkData = async () => {
     try {
       const res = await fetch(`/api/works/${workId}`);
@@ -395,7 +402,7 @@ export function ReaderView({ workId, onBack, onOpenStudio }: ReaderViewProps) {
                       <User className="w-3.5 h-3.5 text-indigo-400" /> {comm.username}
                     </span>
                     <span className="opacity-50 text-[10px]">
-                      {new Date(comm.createdAt).toLocaleDateString()}
+                      {isMounted ? new Date(comm.createdAt).toLocaleDateString() : ''}
                     </span>
                   </div>
                   <p className="text-xs leading-relaxed opacity-90">{comm.content}</p>
