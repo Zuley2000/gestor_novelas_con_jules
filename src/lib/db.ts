@@ -3,14 +3,13 @@ import path from 'path';
 import fs from 'fs';
 import { Work, Chapter, CreativeCard, PlanningCard, Comment } from './types';
 
-// Use absolute path with process.cwd()
-const dbPath = path.join(process.cwd(), 'data', 'novel_app.db');
-
-// Ensure data directory exists before instantiating Database
-const dataDir = path.dirname(dbPath);
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+// Create data directory explicitly before instantiating Database
+const dbDir = path.join(process.cwd(), 'data');
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
 }
+
+const dbPath = path.join(dbDir, 'novel_app.db');
 
 export let db: Database.Database;
 
@@ -19,7 +18,6 @@ try {
   db.pragma('journal_mode = WAL');
 } catch (error) {
   console.error('Error instantiating SQLite database:', error);
-  // Re-try or throw readable error
   throw error;
 }
 
